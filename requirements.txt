@@ -1,5 +1,5 @@
 # Bindings for the hermes protocol 
 hermes-python>=0.2
 requests
-darksky
+darkskylib
 geopy
