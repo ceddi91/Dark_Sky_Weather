@@ -2,7 +2,7 @@
 import requests
 import datetime
 import random
-from darksky import forecast
+from darksky import forecast as ds_forecast
 from geopy.geocoders import Nominatim
 
 
@@ -87,7 +87,7 @@ class Weather:
         # forecast_url = "{0}/{1}/{2}".format(
         #     self.weather_api_base_url, self.weather_api_key, location)
         try:
-            r_forecast = forecast(self.weather_api_key, geolocation.latitude, geolocation.longitude, units='si')
+            r_forecast = ds_forecast(self.weather_api_key, geolocation.latitude, geolocation.longitude, units='si')
             r_forecast.location = location
             r_forecast.inLocation = " in {0}".format(location) if location else "",
             r_forecast.rc = 0
@@ -98,10 +98,12 @@ class Weather:
 
     @staticmethod
     def add_warning_if_needed(response, weather_forecast):
-        if weather_forecast["rain"] and "rain" not in weather_forecast["mainCondition"]\
-                and "regen" not in weather_forecast["mainCondition"]:
+        weather_today = weather_forecast.daily[0]
+        if weather_today.precipProbability > 0.1 and weather_today.precipType = "rain" \ 
+                and "rain" not in weather_today.summary:
             response += ' Es könnte regnen.'
-        if weather_forecast["snow"] and "snow" not in weather_forecast["mainCondition"]:
+        if weather_today.precipProbability > 0.1 and weather_today.precipType = "snow" \ 
+                and "snow" not in weather_today.summary:
             response += ' Es könnte schneien.'
         return response
 
@@ -122,11 +124,11 @@ class Weather:
                         "Aktuelle Temperatur ist {2} Grad. "
                         "Höchsttemperatur: {3} Grad. "
                         "Tiefsttemperatur: {4} Grad.").format(
-                weather_today["summary"],
-                weather_forecast["inLocation"],
-                weather_forecast["currently"]["temperature"],
-                weather_today["temperatureMax"],
-                weather_today["temperatureMin"]
+                weather_today.summary,
+                weather_forecast.inLocation,
+                weather_forecast.currently.temperature,
+                weather_today.temperatureMax,
+                weather_today.temperatureMin
             )
             response = self.add_warning_if_needed(response, weather_today)
         response = response.decode('utf8')
@@ -142,9 +144,10 @@ class Weather:
         if weather_forecast['rc'] != 0:
             response = self.error_response(weather_forecast)
         else:
+            weather_today = weather_forecast.daily[0]
             response = "Wetter heute{1}: {0}.".format(
-                weather_forecast["mainCondition"],
-                weather_forecast["inLocation"]
+                weather_today.summary,
+                weather_forecast.inLocation
             )
             response = self.add_warning_if_needed(response, weather_forecast)
         response = response.decode('utf8')
@@ -160,12 +163,13 @@ class Weather:
         if weather_forecast['rc'] != 0:
             response = self.error_response(weather_forecast)
         else:
+            weather_today = weather_forecast.daily[0]
             response = ("{0} hat es aktuell {1} Grad. "
                         "Heute wird die Höchsttemperatur {2} Grad sein "
                         "und die Tiefsttemperatur {3} Grad.").format(
-                weather_forecast["inLocation"],
-                weather_forecast["temperature"],
-                weather_forecast["temperatureMax"],
-                weather_forecast["temperatureMin"])
+                weather_forecast.inLocation,
+                weather_forecast.currently.temperature,
+                weather_today.temperatureMax,
+                weather_today.temperatureMin)
         response = response.decode('utf8')
         return response
