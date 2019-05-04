@@ -99,11 +99,9 @@ class Weather:
     @staticmethod
     def add_warning_if_needed(response, weather_forecast):
         weather_today = weather_forecast.daily[0]
-        if weather_today.precipProbability > 0.1 and weather_today.precipType = "rain" \ 
-                and "rain" not in weather_today.summary:
+        if weather_today.precipProbability > 0.1 and weather_today.precipType == "rain" and "rain" not in weather_today.summary:
             response += ' Es könnte regnen.'
-        if weather_today.precipProbability > 0.1 and weather_today.precipType = "snow" \ 
-                and "snow" not in weather_today.summary:
+        if weather_today.precipProbability > 0.1 and weather_today.precipType == "snow" and "snow" not in weather_today.summary:
             response += ' Es könnte schneien.'
         return response
 

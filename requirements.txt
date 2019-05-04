@@ -3,3 +3,4 @@ hermes-python>=0.2
 requests
 darkskylib
 geopy
+configparser

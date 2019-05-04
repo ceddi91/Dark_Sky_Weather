@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import ConfigParser
+import configparser
 from hermes_python.hermes import Hermes
 from hermes_python.ontology import *
 import io
