@@ -16,13 +16,17 @@ class Weather:
         except KeyError:
             self.weather_api_key = "XXXXXXXXXXXXXXXXXXXXX"
         try:
-            self.default_city_name = config['secret']['default_city'].encode('utf8')
+            self.default_city_name = config['secret']['default_location']
         except KeyError:
-            self.default_city_name = "Berlin"
+            self.default_city_name = "Stuttgart"
         try:
             self.units = config['global']['units']
         except KeyError:
             self.units = "si"
+        try:
+            self.language = config['global']['lang']
+        except KeyError:
+            self.language = "de"
 
     def parse_dark_sky_forecast_response(self, response, location):
         # Parse the output of Dark Sky's forecast endpoint
@@ -77,19 +81,21 @@ class Weather:
                 locations.append(slot[0].slot_value.value)
         location_objects = [loc_obj for loc_obj in locations if loc_obj is not None]
         if location_objects:
-            location = location_objects[0].value.encode('utf8')
+            location = location_objects[0].value
         else:
             location = self.default_city_name
         # get longitude and latitude from geopy
+        print(self.default_city_name)
+        print('location= ' + str(location))
         geolocation = self.geolocator.geocode(location)
         location = geolocation.address.split(',')[0]
 
         # forecast_url = "{0}/{1}/{2}".format(
         #     self.weather_api_base_url, self.weather_api_key, location)
         try:
-            r_forecast = ds_forecast(self.weather_api_key, geolocation.latitude, geolocation.longitude, units='si')
+            r_forecast = ds_forecast(self.weather_api_key, geolocation.latitude, geolocation.longitude, units=self.units, lang=self.language)
             r_forecast.location = location
-            r_forecast.inLocation = " in {0}".format(location) if location else "",
+            r_forecast.inLocation = ' in ' + location
             r_forecast.rc = 0
             return r_forecast
             # return self.parse_dark_sky_forecast_response(r_forecast.json(), location)
@@ -98,10 +104,10 @@ class Weather:
 
     @staticmethod
     def add_warning_if_needed(response, weather_forecast):
-        weather_today = weather_forecast.daily[0]
-        if weather_today.precipProbability > 0.1 and weather_today.precipType == "rain" and "rain" not in weather_today.summary:
+        print(weather_forecast.precipType)
+        if weather_forecast.precipProbability > 0.1 and weather_forecast.precipType == "rain" and ("Regen" or "regnen") not in weather_forecast.summary:
             response += ' Es könnte regnen.'
-        if weather_today.precipProbability > 0.1 and weather_today.precipType == "snow" and "snow" not in weather_today.summary:
+        if weather_forecast.precipProbability > 0.1 and weather_forecast.precipType == "snow" and ("Schnee" or "schneien") not in weather_forecast.summary:
             response += ' Es könnte schneien.'
         return response
 
@@ -118,18 +124,19 @@ class Weather:
             response = self.error_response(weather_forecast)
         else:
             weather_today = weather_forecast.daily[0]
+            print(weather_forecast.inLocation)
             response = ("Wetter heute{1}: {0}. "
                         "Aktuelle Temperatur ist {2} Grad. "
                         "Höchsttemperatur: {3} Grad. "
-                        "Tiefsttemperatur: {4} Grad.").format(
+                        "Tiefsttemperatur: {4} Grad. ").format(
                 weather_today.summary,
                 weather_forecast.inLocation,
-                weather_forecast.currently.temperature,
-                weather_today.temperatureMax,
-                weather_today.temperatureMin
+                str(round(weather_forecast.currently.temperature,1)).replace('.',','),
+                str(round(weather_today.temperatureMax,1)).replace('.',','),
+                str(round(weather_today.temperatureMin,1)).replace('.',',')
             )
+            print(response)
             response = self.add_warning_if_needed(response, weather_today)
-        response = response.decode('utf8')
         return response
 
     def forecast_condition(self, intentMessage):
@@ -139,7 +146,7 @@ class Weather:
             - warning about rain or snow if needed
         """
         weather_forecast = self.get_weather_forecast(intentMessage)
-        if weather_forecast['rc'] != 0:
+        if weather_forecast.rc != 0:
             response = self.error_response(weather_forecast)
         else:
             weather_today = weather_forecast.daily[0]
@@ -148,7 +155,6 @@ class Weather:
                 weather_forecast.inLocation
             )
             response = self.add_warning_if_needed(response, weather_forecast)
-        response = response.decode('utf8')
         return response
 
     def forecast_temperature(self, intentMessage):
@@ -158,7 +164,7 @@ class Weather:
             - max and min temperature
         """
         weather_forecast = self.get_weather_forecast(intentMessage)
-        if weather_forecast['rc'] != 0:
+        if weather_forecast.rc != 0:
             response = self.error_response(weather_forecast)
         else:
             weather_today = weather_forecast.daily[0]
@@ -166,8 +172,7 @@ class Weather:
                         "Heute wird die Höchsttemperatur {2} Grad sein "
                         "und die Tiefsttemperatur {3} Grad.").format(
                 weather_forecast.inLocation,
-                weather_forecast.currently.temperature,
-                weather_today.temperatureMax,
-                weather_today.temperatureMin)
-        response = response.decode('utf8')
+                str(round(weather_forecast.currently.temperature,1)).replace('.',','),
+                str(round(weather_today.temperatureMax,1)).replace('.',','),
+                str(round(weather_today.temperatureMin,1)).replace('.',','))
         return response
