@@ -1,14 +1,16 @@
 # -*- encoding: utf-8 -*-
 import requests
-import datetime
+from datetime import datetime, timezone
 import random
 from darksky import forecast as ds_forecast
 from geopy.geocoders import Nominatim
+from dateutil import parser as date_parser
+import pytz
 
 
 class Weather:
     def __init__(self, config):
-        self.fromtimestamp = datetime.datetime.fromtimestamp
+        self.fromtimestamp = datetime.fromtimestamp
         # self.weather_api_base_url = "https://api.darksky.net/forecast/"
         self.geolocator = Nominatim(user_agent="darksky")
         try:
@@ -68,6 +70,9 @@ class Weather:
                                       "API-Schlüssel ist ungültig.",
                                       "Fehler beim Abrufen. Entweder gibt es den Ort nicht, oder der API-Schlüssel "
                                       "ist ungültig."])
+        elif error_num == 3:
+            response = random.choice(["Du bist zu früh dran für den gewünschten Zeitpunkt.",
+                                      "Ich bin leider kein Hellseher."])
         else:
             response = random.choice(["Es ist ein Fehler aufgetreten.", "Hier ist ein Fehler aufgetreten."])
         return response
@@ -119,24 +124,48 @@ class Weather:
                     - max and min temperature
                     - warning about rain or snow if needed
         """
+
+        try:
+            timezone = pytz.timezone("Europe/Berlin")
+            current_date = timezone.localize(datetime.now()).date()
+            target_date = date_parser.parse(intentMessage.slots.forecast_start_date_time.first().value).date()
+            delta = (target_date - current_date).days
+        except:
+            delta = 0
+        
+        #print(delta)
         weather_forecast = self.get_weather_forecast(intentMessage)
+
+        if delta > len(weather_forecast.daily):
+            weather_forecast.rc = 3
+
         if weather_forecast.rc != 0:
             response = self.error_response(weather_forecast)
         else:
-            weather_today = weather_forecast.daily[0]
-            print(weather_forecast.inLocation)
-            response = ("Wetter heute{1}: {0}. "
-                        "Aktuelle Temperatur ist {2} Grad. "
-                        "Höchsttemperatur: {3} Grad. "
-                        "Tiefsttemperatur: {4} Grad. ").format(
-                weather_today.summary,
-                weather_forecast.inLocation,
-                str(round(weather_forecast.currently.temperature,1)).replace('.',','),
-                str(round(weather_today.temperatureMax,1)).replace('.',','),
-                str(round(weather_today.temperatureMin,1)).replace('.',',')
-            )
+            weather_target_day = weather_forecast.daily[delta]
+            #print(weather_forecast.inLocation)
+            if delta > 0:
+                response = ("Wetter {1}: {0}. "
+                            "Höchsttemperatur: {2} Grad. "
+                            "Tiefsttemperatur: {3} Grad. ").format(
+                    weather_target_day.summary,
+                    weather_forecast.inLocation,
+                    str(round(weather_target_day.temperatureMax,1)).replace('.',','),
+                    str(round(weather_target_day.temperatureMin,1)).replace('.',',')
+                )
+            else:
+                response = ("Wetter heute{1}: {0}. "
+                            "Aktuelle Temperatur ist {2} Grad. "
+                            "Höchsttemperatur: {3} Grad. "
+                            "Tiefsttemperatur: {4} Grad. ").format(
+                    weather_target_day.summary,
+                    weather_forecast.inLocation,
+                    str(round(weather_forecast.currently.temperature,1)).replace('.',','),
+                    str(round(weather_target_day.temperatureMax,1)).replace('.',','),
+                    str(round(weather_target_day.temperatureMin,1)).replace('.',',')
+                )
             print(response)
-            response = self.add_warning_if_needed(response, weather_today)
+            response = self.add_warning_if_needed(response, weather_target_day)
         return response
 
     def forecast_condition(self, intentMessage):
