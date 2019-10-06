@@ -39,9 +39,12 @@ class Weather:
 
             all_min = [x["main"]["temp_min"] for x in today_forecasts]
             all_max = [x["main"]["temp_max"] for x in today_forecasts]
-            all_conditions = [x["weather"][0]["description"].encode('utf8') for x in today_forecasts]
-            rain = list(filter(lambda forecast: forecast["weather"][0]["main"] == "Rain", today_forecasts))
-            snow = list(filter(lambda forecast: forecast["weather"][0]["main"] == "Snow", today_forecasts))
+            all_conditions = [x["weather"][0]["description"].encode(
+                'utf8') for x in today_forecasts]
+            rain = list(filter(
+                lambda forecast: forecast["weather"][0]["main"] == "Rain", today_forecasts))
+            snow = list(filter(
+                lambda forecast: forecast["weather"][0]["main"] == "Snow", today_forecasts))
 
             return {
                 "rc": 0,
@@ -56,7 +59,7 @@ class Weather:
             }
         except KeyError:  # error 404 (locality not found or api key is wrong)
             return {'rc': 2}
-    
+
     def error_response(self, data):
         error_num = data.rc
         if error_num == 1:
@@ -74,7 +77,8 @@ class Weather:
             response = random.choice(["Du bist zu früh dran für den gewünschten Zeitpunkt.",
                                       "Ich bin leider kein Hellseher."])
         else:
-            response = random.choice(["Es ist ein Fehler aufgetreten.", "Hier ist ein Fehler aufgetreten."])
+            response = random.choice(
+                ["Es ist ein Fehler aufgetreten.", "Hier ist ein Fehler aufgetreten."])
         return response
 
     def get_weather_forecast(self, intentMessage):
@@ -84,7 +88,8 @@ class Weather:
             if slot_value not in ['forecast_condition_name', 'forecast_start_date_time',
                                   'forecast_item', 'forecast_temperature_name']:
                 locations.append(slot[0].slot_value.value)
-        location_objects = [loc_obj for loc_obj in locations if loc_obj is not None]
+        location_objects = [
+            loc_obj for loc_obj in locations if loc_obj is not None]
         if location_objects:
             location = location_objects[0].value
         else:
@@ -98,7 +103,8 @@ class Weather:
         # forecast_url = "{0}/{1}/{2}".format(
         #     self.weather_api_base_url, self.weather_api_key, location)
         try:
-            r_forecast = ds_forecast(self.weather_api_key, geolocation.latitude, geolocation.longitude, units=self.units, lang=self.language)
+            r_forecast = ds_forecast(self.weather_api_key, geolocation.latitude,
+                                     geolocation.longitude, units=self.units, lang=self.language)
             r_forecast.location = location
             r_forecast.inLocation = ' in ' + location
             r_forecast.rc = 0
@@ -128,12 +134,13 @@ class Weather:
         try:
             timezone = pytz.timezone("Europe/Berlin")
             current_date = timezone.localize(datetime.now()).date()
-            target_date = date_parser.parse(intentMessage.slots.forecast_start_date_time.first().value).date()
+            target_date = date_parser.parse(
+                intentMessage.slots.forecast_start_date_time.first().value).date()
             delta = (target_date - current_date).days
         except:
             delta = 0
-        
-        #print(delta)
+
+        # print(delta)
         weather_forecast = self.get_weather_forecast(intentMessage)
 
         if delta > len(weather_forecast.daily):
@@ -143,15 +150,16 @@ class Weather:
             response = self.error_response(weather_forecast)
         else:
             weather_target_day = weather_forecast.daily[delta]
-            #print(weather_forecast.inLocation)
+            # print(weather_forecast.inLocation)
             if delta > 0:
                 response = ("Wetter {1}: {0}. "
                             "Höchsttemperatur: {2} Grad. "
                             "Tiefsttemperatur: {3} Grad. ").format(
                     weather_target_day.summary,
                     weather_forecast.inLocation,
-                    str(round(weather_target_day.temperatureMax,1)).replace('.',','),
-                    str(round(weather_target_day.temperatureMin,1)).replace('.',',')
+                    str(round(weather_target_day.temperatureMax, 1)
+                        ).replace('.', ','),
+                    str(round(weather_target_day.temperatureMin, 1)).replace('.', ',')
                 )
             else:
                 response = ("Wetter heute{1}: {0}. "
@@ -160,9 +168,11 @@ class Weather:
                             "Tiefsttemperatur: {4} Grad. ").format(
                     weather_target_day.summary,
                     weather_forecast.inLocation,
-                    str(round(weather_forecast.currently.temperature,1)).replace('.',','),
-                    str(round(weather_target_day.temperatureMax,1)).replace('.',','),
-                    str(round(weather_target_day.temperatureMin,1)).replace('.',',')
+                    str(round(weather_forecast.currently.temperature, 1)
+                        ).replace('.', ','),
+                    str(round(weather_target_day.temperatureMax, 1)
+                        ).replace('.', ','),
+                    str(round(weather_target_day.temperatureMin, 1)).replace('.', ',')
                 )
             print(response)
             response = self.add_warning_if_needed(response, weather_target_day)
@@ -201,7 +211,8 @@ class Weather:
                         "Heute wird die Höchsttemperatur {2} Grad sein "
                         "und die Tiefsttemperatur {3} Grad.").format(
                 weather_forecast.inLocation,
-                str(round(weather_forecast.currently.temperature,1)).replace('.',','),
-                str(round(weather_today.temperatureMax,1)).replace('.',','),
-                str(round(weather_today.temperatureMin,1)).replace('.',','))
+                str(round(weather_forecast.currently.temperature, 1)
+                    ).replace('.', ','),
+                str(round(weather_today.temperatureMax, 1)).replace('.', ','),
+                str(round(weather_today.temperatureMin, 1)).replace('.', ','))
         return response
