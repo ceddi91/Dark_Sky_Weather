@@ -6,6 +6,7 @@ from darksky import forecast as ds_forecast
 from geopy.geocoders import Nominatim
 from dateutil import parser as date_parser
 import pytz
+import json
 
 
 class Weather:
@@ -84,7 +85,7 @@ class Weather:
     def get_weather_forecast(self, intentMessage):
         # Parse the query slots, and fetch the weather forecast from Dark Sky's API
         locations = []
-        for (slot_value, slot) in intentMessage.slots.items():
+        for (slot_value, slot) in intentMessage["slots"].items():
             if slot_value not in ['forecast_condition_name', 'forecast_start_date_time',
                                   'forecast_item', 'forecast_temperature_name']:
                 locations.append(slot[0].slot_value.value)
@@ -122,7 +123,7 @@ class Weather:
             response += ' Es könnte schneien.'
         return response
 
-    def forecast(self, intentMessage):
+    def forecast(self, bIntentMessage):
         """
                 Complete answer:
                     - condition
@@ -132,10 +133,14 @@ class Weather:
         """
 
         try:
+            # convert byte intenMessage to dict
+            intentMessage = json.loads(bIntentMessage.decode())
             timezone = pytz.timezone("Europe/Berlin")
             current_date = timezone.localize(datetime.now()).date()
+            import pdb
+            pdb.set_trace()
             target_date = date_parser.parse(
-                intentMessage.slots.forecast_start_date_time.first().value).date()
+                intentMessage["slot"]["forecast_start_date_time"].first().value).date()
             delta = (target_date - current_date).days
         except:
             delta = 0
