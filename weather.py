@@ -9,6 +9,24 @@ import pytz
 import json
 
 
+class slt:
+    def __init__(self, slotTuple):
+        self.key = slotTuple[0]
+        self.value = slotTuple[1]
+
+
+class iMsg:
+    def __init__(self, bMsg):
+        # byte Message to string
+        msg = json.loads(bMsg.decode())
+        slots = msg['slots']
+        slotList = []
+        for slot in slots:
+            for item in slot['value'].items():
+                slotList.append(slt(item))
+        self.slots = slotList
+
+
 class Weather:
     def __init__(self, config):
         self.fromtimestamp = datetime.fromtimestamp
@@ -85,18 +103,17 @@ class Weather:
     def get_weather_forecast(self, intentMessage):
         # Parse the query slots, and fetch the weather forecast from Dark Sky's API
         locations = []
-        for (slot_value, slot) in intentMessage["slots"].items():
-            if slot_value not in ['forecast_condition_name', 'forecast_start_date_time',
-                                  'forecast_item', 'forecast_temperature_name']:
-                locations.append(slot[0].slot_value.value)
+        for slot in intentMessage["slots"]:
+            if slot['slotName'] not in ['forecast_condition_name', 'forecast_start_date_time',
+                                        'forecast_item', 'forecast_temperature_name']:
+                locations.append(slot['value']['value'])
         location_objects = [
             loc_obj for loc_obj in locations if loc_obj is not None]
         if location_objects:
-            location = location_objects[0].value
+            location = location_objects[0]
         else:
             location = self.default_city_name
         # get longitude and latitude from geopy
-        print(self.default_city_name)
         print('location= ' + str(location))
         geolocation = self.geolocator.geocode(location)
         location = geolocation.address.split(',')[0]
@@ -132,22 +149,28 @@ class Weather:
                     - warning about rain or snow if needed
         """
 
+        intentMessage = json.loads(bIntentMessage.decode())
         try:
-            # convert byte intenMessage to dict
-            intentMessage = json.loads(bIntentMessage.decode())
+            # convert byte intenMessage to JSON
+            # msg = iMsg(bIntentMessage)
+            # if next((slt for slt in msg.slots if slt.key == "forecast_date_time"), None):
+            # date_string = next(
+            #     (slot for key, value in msg.slots if value == "forecast_date_time"), None).
             timezone = pytz.timezone("Europe/Berlin")
             current_date = timezone.localize(datetime.now()).date()
-            import pdb
-            pdb.set_trace()
             target_date = date_parser.parse(
-                intentMessage["slot"]["forecast_start_date_time"].first().value).date()
+                intentMessage["slots"][0]["value"]["value"]
+                # intentMessage.slots.forecast_date_time.value
+            ).date()
             delta = (target_date - current_date).days
         except:
             delta = 0
 
-        # print(delta)
+        print(delta)
         weather_forecast = self.get_weather_forecast(intentMessage)
 
+        # import pdb
+        # pdb.set_trace()
         if delta > len(weather_forecast.daily):
             weather_forecast.rc = 3
 
