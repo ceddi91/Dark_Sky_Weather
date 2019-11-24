@@ -114,7 +114,7 @@ class Weather:
         else:
             location = self.default_city_name
         # get longitude and latitude from geopy
-        print('location= ' + str(location))
+        # print('location= ' + str(location))
         geolocation = self.geolocator.geocode(location)
         location = geolocation.address.split(',')[0]
 
@@ -136,8 +136,11 @@ class Weather:
         print(weather_forecast.precipType)
         if weather_forecast.precipProbability > 0.1 and weather_forecast.precipType == "rain" and ("Regen" or "regnen") not in weather_forecast.summary:
             response += ' Es könnte regnen.'
-        if weather_forecast.precipProbability > 0.1 and weather_forecast.precipType == "snow" and ("Schnee" or "schneien") not in weather_forecast.summary:
+        elif weather_forecast.precipProbability > 0.1 and weather_forecast.precipType == "snow" and ("Schnee" or "schneien") not in weather_forecast.summary:
             response += ' Es könnte schneien.'
+        else:
+            response += ' Nur geringe Niederschlagswahrscheinlichkeit.'
+
         return response
 
     def forecast(self, bIntentMessage):
@@ -151,11 +154,6 @@ class Weather:
 
         intentMessage = json.loads(bIntentMessage.decode())
         try:
-            # convert byte intenMessage to JSON
-            # msg = iMsg(bIntentMessage)
-            # if next((slt for slt in msg.slots if slt.key == "forecast_date_time"), None):
-            # date_string = next(
-            #     (slot for key, value in msg.slots if value == "forecast_date_time"), None).
             timezone = pytz.timezone("Europe/Berlin")
             current_date = timezone.localize(datetime.now()).date()
             target_date = date_parser.parse(
@@ -166,11 +164,8 @@ class Weather:
         except:
             delta = 0
 
-        print(delta)
         weather_forecast = self.get_weather_forecast(intentMessage)
 
-        # import pdb
-        # pdb.set_trace()
         if delta > len(weather_forecast.daily):
             weather_forecast.rc = 3
 
@@ -178,7 +173,6 @@ class Weather:
             response = self.error_response(weather_forecast)
         else:
             weather_target_day = weather_forecast.daily[delta]
-            # print(weather_forecast.inLocation)
             if delta > 0:
                 response = ("Wetter {1}: {0}. "
                             "Höchsttemperatur: {2} Grad. "
@@ -202,16 +196,16 @@ class Weather:
                         ).replace('.', ','),
                     str(round(weather_target_day.temperatureMin, 1)).replace('.', ',')
                 )
-            print(response)
             response = self.add_warning_if_needed(response, weather_target_day)
         return response
 
-    def forecast_condition(self, intentMessage):
+    def forecast_condition(self, bIntentMessage):
         """
         Condition-focused answer:
             - condition
             - warning about rain or snow if needed
         """
+        intentMessage = json.loads(bIntentMessage.decode())
         weather_forecast = self.get_weather_forecast(intentMessage)
         if weather_forecast.rc != 0:
             response = self.error_response(weather_forecast)
@@ -221,15 +215,16 @@ class Weather:
                 weather_today.summary,
                 weather_forecast.inLocation
             )
-            response = self.add_warning_if_needed(response, weather_forecast)
+            response = self.add_warning_if_needed(response, weather_today)
         return response
 
-    def forecast_temperature(self, intentMessage):
+    def forecast_temperature(self, bIntentMessage):
         """
         Temperature-focused answer:
             - current temperature
             - max and min temperature
         """
+        intentMessage = json.loads(bIntentMessage.decode())
         weather_forecast = self.get_weather_forecast(intentMessage)
         if weather_forecast.rc != 0:
             response = self.error_response(weather_forecast)

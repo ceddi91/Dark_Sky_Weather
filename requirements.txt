@@ -5,4 +5,6 @@ darkskylib
 geopy
 configparser
 python-dateutil
-paho
+paho-mqtt
+pytz
+pylint
